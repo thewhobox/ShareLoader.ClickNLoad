@@ -15,7 +15,7 @@ public class flashController : Controller
         _logger = logger;
     }
 
-    string links = "";
+    static CheckViewModel model;
 
     public IActionResult addcrypted2()
     {
@@ -29,9 +29,6 @@ public class flashController : Controller
 
         byte[] dataByte = Convert.FromBase64String(crypted);
 
-        //RijndaelManaged rDel = new RijndaelManaged();
-        //System.Text.ASCIIEncoding aEc = new System.Text.ASCIIEncoding();
-
         jk = jk.ToUpper();
         string decKey = "";
         for (int i = 0; i < jk.Length; i += 2)
@@ -39,14 +36,6 @@ public class flashController : Controller
             decKey += (char)Convert.ToUInt16(jk.Substring(i, 2), 16);
         }
 
-        /*rDel.Key = aEc.GetBytes(decKey);
-        rDel.IV = aEc.GetBytes(decKey);
-        rDel.Mode = CipherMode.CBC;
-
-        rDel.Padding = PaddingMode.None;
-        ICryptoTransform cTransform = rDel.CreateDecryptor();
-        byte[] resultArray = cTransform.TransformFinalBlock(dataByte, 0, dataByte.Length);
-        string rawLinks = aEc.GetString(resultArray);*/
         string rawLinks = "";
 
         using (Aes aesAlg = Aes.Create())
@@ -77,16 +66,28 @@ public class flashController : Controller
 
         Regex rgx = new Regex("\u0000+$");
         rawLinks = rgx.Replace(rawLinks, "");
-        rgx = new Regex("\n+");
-        links = rgx.Replace(rawLinks, "\r\n");
+        string[] links = rawLinks.Split("\r\n");
 
-        Process.Start("http://localhost:9666/flash/check");
+
+
+        model = new CheckViewModel() { 
+            Name = package,
+            RawLinks = string.Join(",", links),
+            RawLinksCount = links.Count()
+        };
+
+        var ps = new ProcessStartInfo("http://localhost:9666/flash/check")
+        { 
+            UseShellExecute = true, 
+            Verb = "open" 
+        };
+        Process.Start(ps);
 
         return Ok();
     }
 
     public IActionResult check() 
     {
-        return View(links);
+        return View(model);
     }
 }
