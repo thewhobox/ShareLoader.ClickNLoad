@@ -9,6 +9,7 @@ public class CheckViewModel
     public List<LinkGroup> Groups { get; set; }
     public DownloadType Type { get; set; }
     public string RawLinks { get; set; }
+    public string Search { get; set; }
     public int RawLinksCount { get; set; }
 }
 

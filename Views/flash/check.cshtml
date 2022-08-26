@@ -110,7 +110,7 @@
                     </div>
 
                     <div class="form-group">
-                        <button class="button success">Download hinzufügen</button>
+                        <button class="button success disabled">Download hinzufügen</button>
                         <a asp-action="Index" class="button">Abbrechen</a>
                     </div>
                 </div>
@@ -124,7 +124,7 @@
                     <div id="searchBar" style="visibility:hidden" data-role="progress" data-type="line" data-small="true"></div>
 
                     <div class="form-group">
-                        <input id="inSearch" type="text" placeholder="Suche nach der Serie/Film" value="@ViewData["searchString"]" disabled="disabled" autocomplete="off" />
+                        <input id="inSearch" type="text" placeholder="Suche nach der Serie/Film" value="@Model.Search" disabled="disabled" autocomplete="off" />
                         <small class="text-muted">Suchtext oder Imdb-ID</small>
                     </div>
 
@@ -165,13 +165,30 @@
         let imdbid = "";
         let currentPage = 1;
         let totalPage = 0;
-        var links = "@Html.Raw(Model.RawLinks)";
+        let links = "@Html.Raw(Model.RawLinks)".split(',');
+        let currentCheckIndex = 0;
 
         $(document).ready(function () {
-            checkLinks();
+            initTable();
             checkSearch();
             checkSeason();
+            checkLinks();
         });
+
+        function initTable() {
+            for(let i = 0; i < links.length; i++)
+            {
+                let domain = links[i].substring(8);
+                domain = domain.substring(0, domain.indexOf('/'));
+                console.log(domain);
+                domain = domain.replace('.', "%2E");
+                let id = links[i].substring(7 + domain.length);
+                if(id.indexOf('/') != -1)
+                    id = id.substring(0, id.indexOf('/'));
+
+                $("#LinkGrid").append("<div class='row' data-id='" + id + "'><div class='cell'><input type='checkbox' data-role='checkbox' />" + id + "</div><div class='cell state'>Wartet</div><div class='cell-3 name'>-</div><div class='cell size'>0 Bytes</div></div>");
+            }
+        }
 
         $(".card-header input[type=checkbox]").change(function () {
             let isChecked = $(".card-header input[type=checkbox]").prop("checked");
@@ -212,15 +229,43 @@
         });
 
         function checkLinks() {
-            console.log("Test");
-            let arr = links.split(',');
-            console.log(arr);
-            console.log(arr.length);
-            for(int i = 0; i < arr.length; i++)
+            $("#InfoProgress").html(currentCheckIndex);
+            if(currentCheckIndex == links.length)
             {
-                console.log(arr[i]);
-                $("InfoCounter").html(i + 1);
+                $("button.success").removeClass("disabled");
+                return;
             }
+            let item = links[currentCheckIndex];
+            getInfoDDL(item);
+            currentCheckIndex++;
+        }
+
+        function getInfoDDL(url) {
+            let domain = url.substring(8);
+            domain = domain.substring(0, domain.indexOf('/'));
+            domain = domain.replace('.', "%2E");
+            let id = url.substring(7 + domain.length);
+            if(id.indexOf('/') != -1)
+                id = id.substring(0, id.indexOf('/'));
+                
+            $("div.row[data-id=" + id + "] div.state").html("Abfragen");
+            console.log(id);
+            $.getJSON("http://localhost:9666/flash/itemInfo/" + id + "?domain=" + domain, function (data) {
+                let ele = $("div.row[data-id=" + id + "]");
+                $("div.state", ele).html(data.isOnline ? "Online" : "Offline");
+                $("div.name", ele).html(data.name);
+
+                let expos = [ "B", "KB", "MB", "GB" ];
+                let expo = 0;
+                let size = data.size;
+                while(size >= 1024)
+                {
+                    expo++;
+                    size = size / 1024;
+                }
+                $("div.size", ele).html(Math.round(size) + " " + expos[expo]);
+                checkLinks();
+            });
         }
 
         function checkSeason() {
